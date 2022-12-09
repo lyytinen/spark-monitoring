@@ -1,5 +1,8 @@
 # Monitoring Azure Databricks in an Azure Log Analytics Workspace
 
+| :warning: | This library supports Azure Databricks 10.x (Spark 3.2.x) and earlier (see [Supported configurations](#supported-configurations)). Azure Databricks 11.0 includes [breaking changes](https://learn.microsoft.com/azure/databricks/release-notes/runtime/11.0#log4j-is-upgraded-from-log4j-1-to-log4j-2) to the logging systems that the spark-monitoring library integrates with. The work required to update the spark-monitoring library to support Azure Databricks 11.0 (Spark 3.3.0) and newer is not currently planned. |
+|-----------|:--------------------------|
+
 This repository extends the core monitoring functionality of Azure Databricks to send streaming query event information to Azure Monitor. For more information about using this library to monitor Azure Databricks, see [Monitoring Azure Databricks](https://docs.microsoft.com/azure/architecture/databricks-monitoring)
 
 The project has the following directory structure:
@@ -27,13 +30,22 @@ Before you begin, ensure you have the following prerequisites in place:
 
 * Clone or download this GitHub repository.
 * An active Azure Databricks workspace. For instructions on how to deploy an Azure Databricks workspace, see [get started with Azure Databricks.](https://docs.microsoft.com/azure/azure-databricks/quickstart-create-databricks-workspace-portal).
-* Install the [Azure Databricks CLI](https://docs.databricks.com/user-guide/dev-tools/databricks-cli.html#install-the-cli).
-  * An Azure Databricks personal access token is required to use the CLI. For instructions, see [token management](https://docs.azuredatabricks.net/api/latest/authentication.html#token-management).
+* Install the [Azure Databricks CLI](https://docs.microsoft.com/azure/databricks/dev-tools/cli/#install-the-cli).
+  * An Azure Databricks personal access token or Azure AD token is required to use the CLI. For instructions, see [Set up authentication](https://docs.microsoft.com/azure/databricks/dev-tools/cli/#--set-up-authentication).
   * You can also use the Azure Databricks CLI from the Azure Cloud Shell.
 * A Java IDE, with the following resources:
-  * [Java Devlopment Kit (JDK) version 1.8](https://www.oracle.com/technetwork/java/javase/downloads/index.html)
-  * [Scala language SDK 2.11 and/or 2.12](https://www.scala-lang.org/download/)
+  * [Java Development Kit (JDK) version 1.8](https://www.oracle.com/technetwork/java/javase/downloads/index.html)
+  * [Scala language SDK 2.12](https://www.scala-lang.org/download/)
   * [Apache Maven 3.6.3](https://maven.apache.org/download.html)
+
+### Supported configurations
+
+| Databricks Runtime(s) | Maven Profile |
+| -- | -- |
+| `7.3 LTS` | `scala-2.12_spark-3.0.1` |
+| `9.1 LTS` | `scala-2.12_spark-3.1.2` |
+| `10.3` - `10.5` | `scala-2.12_spark-3.2.1` |
+| `11.0` | Not currently supported due to changes in [Log4j version](https://docs.microsoft.com/azure/databricks/release-notes/runtime/11.0#log4j-is-upgraded-from-log4j-1-to-log4j-2) |
 
 ## Logging Event Size Limit
 
@@ -67,8 +79,8 @@ docker run -it --rm -v `pwd`:/spark-monitoring -v "$HOME/.m2":/root/.m2 mcr.micr
 ```
 
 ```bash
-# To build a single profile (latest long term support version):
-docker run -it --rm -v `pwd`:/spark-monitoring -v "$HOME/.m2":/root/.m2 -w /spark-monitoring/src mcr.microsoft.com/java/maven:8-zulu-debian10 mvn install -P "scala-2.12_spark-3.1.2"
+# To build a single profile (example for latest long term support version 10.4 LTS):
+docker run -it --rm -v `pwd`:/spark-monitoring -v "$HOME/.m2":/root/.m2 -w /spark-monitoring/src mcr.microsoft.com/java/maven:8-zulu-debian10 mvn install -P "scala-2.12_spark-3.2.1"
 ```
 
 Windows:
@@ -79,8 +91,8 @@ docker run -it --rm -v %cd%:/spark-monitoring -v "%USERPROFILE%/.m2":/root/.m2 m
 ```
 
 ```bash
-# To build a single profile (latest long term support version):
-docker run -it --rm -v %cd%:/spark-monitoring -v "%USERPROFILE%/.m2":/root/.m2 -w /spark-monitoring/src mcr.microsoft.com/java/maven:8-zulu-debian10 mvn install -P "scala-2.12_spark-3.1.2"
+# To build a single profile (example for latest long term support version 10.4 LTS):
+docker run -it --rm -v %cd%:/spark-monitoring -v "%USERPROFILE%/.m2":/root/.m2 -w /spark-monitoring/src mcr.microsoft.com/java/maven:8-zulu-debian10 mvn install -P "scala-2.12_spark-3.2.1"
 ```
 
 ### Option 2: Maven
@@ -148,25 +160,18 @@ Now the _ResourceId **/subscriptions/11111111-5c17-4032-ae54-fc33d56047c2/resour
 ### Create and configure the Azure Databricks cluster
 
 1. Navigate to your Azure Databricks workspace in the Azure Portal.
-1. On the home page, click "new cluster".
-1. Choose a name for your cluster and enter it in "cluster name" text box.
-1. In the "Databricks Runtime Version" dropdown, select **9.1 LTS (includes Apache Spark 3.1.2, Scala 2.12)**.
+1. Under "Compute", click "Create Cluster".
+1. Choose a name for your cluster and enter it in "Cluster name" text box.
+1. In the "Databricks Runtime Version" dropdown, select **Runtime: 10.4 LTS (Scala 2.12, Spark 3.2.1)**.
 1. Under "Advanced Options", click on the "Init Scripts" tab. Go to the last line under the "Init Scripts section" Under the "destination" dropdown, select "DBFS". Enter "dbfs:/databricks/spark-monitoring/spark-monitoring.sh" in the text box. Click the "add" button.
-1. Click the "create cluster" button to create the cluster. Next, click on the "start" button to start the cluster.
+1. Click the "Create Cluster" button to create the cluster. Next, click on the "start" button to start the cluster.
 
 ## Run the sample job (optional)
 
 The repository includes a sample application that shows how to send application metrics and application logs to Azure Monitor.
 
 When building the sample job, specify a maven profile compatible with your
-databricks runtime.
-
-| Databricks Runtime(s) | Maven Profile |
-| -- | -- |
-| `6.4 Extended Support` | `scala-2.11_spark-2.4.5` |
-| `7.3 LTS` | `scala-2.12_spark-3.0.1` |
-| `9.0` - `9.1 LTS` | `scala-2.12_spark-3.1.2` |
-| `10.0` - `10.2` | `scala-2.12_spark-3.2.0` |
+databricks runtime from the [supported configurations section](#supported-configurations).
 
 1. Use Maven to build the POM located at `sample/spark-sample-job/pom.xml` or run the following Docker command:
 
@@ -182,7 +187,7 @@ databricks runtime.
     docker run -it --rm -v %cd%/sample/spark-sample-job:/spark-sample-job -v "%USERPROFILE%/.m2":/root/.m2 -w /spark-sample-job mcr.microsoft.com/java/maven:8-zulu-debian10 mvn install -P <maven-profile>
     ```
 
-1. Navigate to your Databricks workspace and create a new job, as described [here](https://docs.azuredatabricks.net/user-guide/jobs.html#create-a-job).
+1. Navigate to your Databricks workspace and create a new job, as described [here](https://docs.microsoft.com/azure/databricks/workflows/jobs/jobs#--create-a-job).
 
 1. In the job detail page, set **Type** to `JAR`.
 
